@@ -2,6 +2,35 @@
 
 All notable changes to the FAR 117 / 121 Duty & Flight Time Tracker will be documented here.
 
+## [1.1.0] — 2026-05-08
+
+### Contract Provisions
+
+Pilots can now configure contractual limits that are more restrictive than the FAR 117 defaults. Settings are stored in localStorage and persist across sessions.
+
+**Six configurable limits**
+- Minimum pre-FDP rest (§117.25) — default 10h; supports 0.5h increments (e.g., 11h at base)
+- Minimum weekly duty-free time (§117.25) — default 30h consecutive in 168h
+- 28-day block limit (§117.23) — default 100h
+- 365-day block limit (§117.23) — default 1,000h
+- 7-day FDP hours limit (§117.23) — default 60h
+- 28-day FDP hours limit (§117.23) — default 190h
+
+**UI**
+- Collapsible "Contract Provisions" card between the FDP log and quick reference section
+- Inputs highlight violet and a "X modified" badge appears on the card header whenever any value differs from the FAR default
+- "Reset to FAR Defaults" button restores all six values at once
+- Input values commit on blur; invalid entries (blank, zero) revert to the last saved value
+
+**Effect on calculations**
+- All compliance checks — FDP log row flags, Dashboard stat cards, violation tallies — use the contractual limits in real time
+- Dashboard remaining-hours sub-labels and amber warning thresholds scale to the contractual limit
+- FDP log "Req: Xh" and "/ Xh" sub-labels update to reflect active provisions
+- Compliance report scorecard labels updated with contractual values; modified rows tagged "(contract)"
+- Report stat boxes, violation detail text, and FDP log column headers all reflect active provisions
+- Report footer lists active provisions when any differ from FAR defaults
+- CSV export and compliance report generation both respect active provisions
+
 ## [1.0.0] — 2026-05-08
 
 ### Initial release

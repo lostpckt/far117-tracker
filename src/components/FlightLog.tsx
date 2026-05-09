@@ -2,10 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Pencil, X } from 'lucide-react'
 import { compute, fmtDT, fmtHrs } from '@/lib/calculations'
-import type { Entry } from '@/types/entry'
+import type { Entry, ContractProvisions } from '@/types/entry'
 
 interface Props {
   entries: Entry[]
+  provisions: ContractProvisions
   onEdit: (entry: Entry) => void
   onDelete: (id: string) => void
 }
@@ -22,7 +23,7 @@ function crewLabel(e: Entry): string {
   return `${e.position} · Aug ${e.crewCount}/${e.restFacility}`
 }
 
-export default function FlightLog({ entries, onEdit, onDelete }: Props) {
+export default function FlightLog({ entries, provisions, onEdit, onDelete }: Props) {
   if (!entries.length) {
     return (
       <Card>
@@ -60,7 +61,7 @@ export default function FlightLog({ entries, onEdit, onDelete }: Props) {
             </thead>
             <tbody>
               {sorted.map(e => {
-                const c = compute(e, entries)
+                const c = compute(e, entries, provisions)
                 const fdpOver = c.fdpOk === false
 
                 return (
@@ -91,24 +92,24 @@ export default function FlightLog({ entries, onEdit, onDelete }: Props) {
 
                     <td className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
                       <span className={c.hours28Ok === false ? 'text-red-600 font-semibold' : ''}>{fmtHrs(c.rolling28)}</span>
-                      <br /><span className="text-[0.68rem] text-slate-400">/ 100h</span>
+                      <br /><span className="text-[0.68rem] text-slate-400">/ {provisions.maxBlock28Hours}h</span>
                     </td>
                     <td className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
                       <span className={c.hours365Ok === false ? 'text-red-600 font-semibold' : ''}>{fmtHrs(c.rolling365)}</span>
-                      <br /><span className="text-[0.68rem] text-slate-400">/ 1,000h</span>
+                      <br /><span className="text-[0.68rem] text-slate-400">/ {provisions.maxBlock365Hours.toLocaleString()}h</span>
                     </td>
                     <td className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
                       <span className={c.fdp168Ok === false ? 'text-red-600 font-semibold' : ''}>{fmtHrs(c.fdpHours168)}</span>
-                      <br /><span className="text-[0.68rem] text-slate-400">/ 60h</span>
+                      <br /><span className="text-[0.68rem] text-slate-400">/ {provisions.maxFdp168Hours}h</span>
                     </td>
                     <td className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
                       <span className={c.fdp672Ok === false ? 'text-red-600 font-semibold' : ''}>{fmtHrs(c.fdpHours672)}</span>
-                      <br /><span className="text-[0.68rem] text-slate-400">/ 190h</span>
+                      <br /><span className="text-[0.68rem] text-slate-400">/ {provisions.maxFdp672Hours}h</span>
                     </td>
 
                     <td className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
                       {fmtHrs(c.consRest)}
-                      <br /><span className="text-[0.68rem] text-slate-400">Req: 10h</span>
+                      <br /><span className="text-[0.68rem] text-slate-400">Req: {provisions.minRestHours}h</span>
                     </td>
                     <td className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                       <OkBadge flag={c.restOk} okText="OK" warnText="DEFICIENT" />

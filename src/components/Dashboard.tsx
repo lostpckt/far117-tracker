@@ -1,9 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { compute, fmtHrs } from '@/lib/calculations'
-import type { Entry } from '@/types/entry'
+import type { Entry, ContractProvisions } from '@/types/entry'
 
 interface Props {
   entries: Entry[]
+  provisions: ContractProvisions
 }
 
 function StatCard({
@@ -32,16 +33,16 @@ function StatCard({
   )
 }
 
-export default function Dashboard({ entries }: Props) {
+export default function Dashboard({ entries, provisions }: Props) {
   type Color = 'green' | 'red' | 'blue' | 'amber'
 
   const lastEntry = entries.length
     ? [...entries].sort((a, b) => (new Date(b.fdpStart).getTime()) - (new Date(a.fdpStart).getTime()))[0]
     : null
-  const lastCalc = lastEntry ? compute(lastEntry, entries) : null
+  const lastCalc = lastEntry ? compute(lastEntry, entries, provisions) : null
 
   const allWarnings = entries.filter(e => {
-    const c = compute(e, entries)
+    const c = compute(e, entries, provisions)
     return (
       c.fdpOk      === false ||
       c.restOk     === false ||
@@ -69,7 +70,7 @@ export default function Dashboard({ entries }: Props) {
     {
       label: 'Last Pre-FDP Rest',
       value: lastCalc ? fmtHrs(lastCalc.consRest) : '—',
-      sub:   'Required: 10h consecutive',
+      sub:   `Required: ${provisions.minRestHours}h consecutive`,
       color: !lastCalc ? 'blue' : lastCalc.restOk === false ? 'red' : lastCalc.restOk === true ? 'green' : 'blue',
     },
     {
@@ -85,38 +86,44 @@ export default function Dashboard({ entries }: Props) {
   const r168  = lastCalc?.fdpHours168 ?? null
   const r672  = lastCalc?.fdpHours672 ?? null
 
+  const { maxBlock28Hours: lim28, maxBlock365Hours: lim365, maxFdp168Hours: lim168, maxFdp672Hours: lim672 } = provisions
+  const warn28  = lim28  * 0.9
+  const warn365 = lim365 * 0.95
+  const warn168 = lim168 * 0.92
+  const warn672 = lim672 * 0.92
+
   const cumulativeCards: { label: string; value: string; sub: string; color: Color }[] = [
     {
       label: '28-day Block (§117.23)',
       value: r28 !== null ? fmtHrs(r28) : '—',
       sub:   r28 !== null
-        ? (r28 > 100 ? '⚠ 100h limit EXCEEDED' : `${fmtHrs(100 - r28)} remaining of 100h`)
+        ? (r28 > lim28 ? `⚠ ${lim28}h limit EXCEEDED` : `${fmtHrs(lim28 - r28)} remaining of ${lim28}h`)
         : 'No data',
-      color: r28 === null ? 'blue' : r28 > 100 ? 'red' : r28 > 90 ? 'amber' : 'green',
+      color: r28 === null ? 'blue' : r28 > lim28 ? 'red' : r28 > warn28 ? 'amber' : 'green',
     },
     {
       label: '365-day Block (§117.23)',
       value: r365 !== null ? fmtHrs(r365) : '—',
       sub:   r365 !== null
-        ? (r365 > 1000 ? '⚠ 1,000h limit EXCEEDED' : `${fmtHrs(1000 - r365)} remaining of 1,000h`)
+        ? (r365 > lim365 ? `⚠ ${lim365.toLocaleString()}h limit EXCEEDED` : `${fmtHrs(lim365 - r365)} remaining of ${lim365.toLocaleString()}h`)
         : 'No data',
-      color: r365 === null ? 'blue' : r365 > 1000 ? 'red' : r365 > 950 ? 'amber' : 'green',
+      color: r365 === null ? 'blue' : r365 > lim365 ? 'red' : r365 > warn365 ? 'amber' : 'green',
     },
     {
       label: '7-day FDP Hours (§117.23)',
       value: r168 !== null ? fmtHrs(r168) : '—',
       sub:   r168 !== null
-        ? (r168 > 60 ? '⚠ 60h limit EXCEEDED' : `${fmtHrs(60 - r168)} remaining of 60h`)
+        ? (r168 > lim168 ? `⚠ ${lim168}h limit EXCEEDED` : `${fmtHrs(lim168 - r168)} remaining of ${lim168}h`)
         : 'No data',
-      color: r168 === null ? 'blue' : r168 > 60 ? 'red' : r168 > 55 ? 'amber' : 'green',
+      color: r168 === null ? 'blue' : r168 > lim168 ? 'red' : r168 > warn168 ? 'amber' : 'green',
     },
     {
       label: '28-day FDP Hours (§117.23)',
       value: r672 !== null ? fmtHrs(r672) : '—',
       sub:   r672 !== null
-        ? (r672 > 190 ? '⚠ 190h limit EXCEEDED' : `${fmtHrs(190 - r672)} remaining of 190h`)
+        ? (r672 > lim672 ? `⚠ ${lim672}h limit EXCEEDED` : `${fmtHrs(lim672 - r672)} remaining of ${lim672}h`)
         : 'No data',
-      color: r672 === null ? 'blue' : r672 > 190 ? 'red' : r672 > 175 ? 'amber' : 'green',
+      color: r672 === null ? 'blue' : r672 > lim672 ? 'red' : r672 > warn672 ? 'amber' : 'green',
     },
   ]
 

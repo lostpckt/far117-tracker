@@ -1,4 +1,5 @@
-import type { Entry, Computed, RestFacility } from '@/types/entry'
+import type { Entry, Computed, RestFacility, ContractProvisions } from '@/types/entry'
+import { DEFAULT_PROVISIONS } from '@/types/entry'
 
 export function uid(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -126,12 +127,12 @@ export function computeFdpLimit(entry: Entry): number {
   return limit
 }
 
-// §117.25(c): check for 30 consecutive duty-free hours within the preceding 168h window
-function check30hRest(entry: Entry, all: Entry[]): boolean | null {
+// §117.25(c): check for consecutive duty-free hours within the preceding 168h window
+function check30hRest(entry: Entry, all: Entry[], minHours = 30): boolean | null {
   const startMs = ms(entry.fdpStart)
   if (startMs === null) return null
   const winStart = startMs - 168 * 3600000
-  const H30 = 30 * 3600000
+  const H30 = minHours * 3600000
 
   const duties = all
     .filter(e => e.id !== entry.id)
@@ -153,7 +154,7 @@ function check30hRest(entry: Entry, all: Entry[]): boolean | null {
   return startMs - cursor >= H30
 }
 
-export function compute(entry: Entry, all: Entry[]): Computed {
+export function compute(entry: Entry, all: Entry[], prov: ContractProvisions = DEFAULT_PROVISIONS): Computed {
   const c = {} as Computed
 
   const sMs = ms(entry.fdpStart)
@@ -197,10 +198,10 @@ export function compute(entry: Entry, all: Entry[]): Computed {
       return sum + Math.max(0, (en - es) / 3600000)
     }, 0)
 
-    c.hours28Ok  = c.rolling28   !== null ? c.rolling28   <= 100  : null
-    c.hours365Ok = c.rolling365  !== null ? c.rolling365  <= 1000 : null
-    c.fdp168Ok   = c.fdpHours168 !== null ? c.fdpHours168 <= 60   : null
-    c.fdp672Ok   = c.fdpHours672 !== null ? c.fdpHours672 <= 190  : null
+    c.hours28Ok  = c.rolling28   !== null ? c.rolling28   <= prov.maxBlock28Hours  : null
+    c.hours365Ok = c.rolling365  !== null ? c.rolling365  <= prov.maxBlock365Hours : null
+    c.fdp168Ok   = c.fdpHours168 !== null ? c.fdpHours168 <= prov.maxFdp168Hours  : null
+    c.fdp672Ok   = c.fdpHours672 !== null ? c.fdpHours672 <= prov.maxFdp672Hours  : null
   } else {
     c.rolling28   = null
     c.rolling365  = null
@@ -213,13 +214,13 @@ export function compute(entry: Entry, all: Entry[]): Computed {
   }
 
   c.consRest   = hrs(ms(entry.restStart), ms(entry.restEnd))
-  c.restOk     = c.consRest !== null ? c.consRest >= 10 : null
-  c.weekly30Ok = check30hRest(entry, all)
+  c.restOk     = c.consRest !== null ? c.consRest >= prov.minRestHours : null
+  c.weekly30Ok = check30hRest(entry, all, prov.minWeeklyRestHours)
 
   return c
 }
 
-export function generateReport(entries: Entry[], periodDays: number | null): string {
+export function generateReport(entries: Entry[], periodDays: number | null, prov: ContractProvisions = DEFAULT_PROVISIONS): string {
   if (!entries.length) return ''
 
   const nowMs   = Date.now()
@@ -234,7 +235,7 @@ export function generateReport(entries: Entry[], periodDays: number | null): str
   const latestEntry = [...entries].sort(
     (a, b) => (ms(b.fdpEnd) ?? ms(b.fdpStart) ?? 0) - (ms(a.fdpEnd) ?? ms(a.fdpStart) ?? 0)
   )[0]
-  const snap = compute(latestEntry, entries)
+  const snap = compute(latestEntry, entries, prov)
 
   const pilots    = [...new Set(filtered.map(e => e.pilot).filter(Boolean))].join(', ') || 'All Pilots'
   const generated = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' })
@@ -246,18 +247,18 @@ export function generateReport(entries: Entry[], periodDays: number | null): str
   const violations: { date: string; pilot: string; type: string; detail: string }[] = []
 
   filtered.forEach(e => {
-    const c = compute(e, entries)
+    const c = compute(e, entries, prov)
     if (c.fdpOk === false) {
       fdpFail++
       violations.push({ date: fmtDT(e.fdpStart), pilot: e.pilot, type: 'FDP Limit Exceeded', detail: `FDP: ${fmtHrs(c.fdpActual)} (limit ${c.fdpLimit}h)` })
     }
     if (c.restOk === false) {
       restFail++
-      violations.push({ date: fmtDT(e.fdpStart), pilot: e.pilot, type: 'Pre-FDP Rest Deficient', detail: `Got ${fmtHrs(c.consRest)}, required 10h` })
+      violations.push({ date: fmtDT(e.fdpStart), pilot: e.pilot, type: 'Pre-FDP Rest Deficient', detail: `Got ${fmtHrs(c.consRest)}, required ${prov.minRestHours}h` })
     }
     if (c.weekly30Ok === false) {
       rest30Fail++
-      violations.push({ date: fmtDT(e.fdpStart), pilot: e.pilot, type: '30h Weekly Rest Not Met', detail: 'No 30-consecutive-hour rest period found in prior 168h' })
+      violations.push({ date: fmtDT(e.fdpStart), pilot: e.pilot, type: `${prov.minWeeklyRestHours}h Weekly Rest Not Met`, detail: `No ${prov.minWeeklyRestHours}-consecutive-hour rest period found in prior 168h` })
     }
   })
 
@@ -272,14 +273,17 @@ export function generateReport(entries: Entry[], periodDays: number | null): str
 
   const flag = (ok: boolean | null) => ok === null ? '—' : ok ? '✓' : '⚠'
 
+  const provTag = (key: keyof ContractProvisions) =>
+    prov[key] !== DEFAULT_PROVISIONS[key] ? ' <span style="font-size:0.7rem;color:#7c3aed;font-weight:400">(contract)</span>' : ''
+
   const scRows = [
-    ['FDP Limits (Table B/C §117.15/17)',         fdpFail === 0   ? 'PASS' : `${fdpFail} EXCEEDED`,           fdpFail === 0],
-    ['Pre-FDP Rest ≥10h (§117.25)',                restFail === 0  ? 'PASS' : `${restFail} DEFICIENT`,          restFail === 0],
-    ['30h Rest in 168h (§117.25)',                 rest30Fail === 0 ? 'PASS' : `${rest30Fail} NOT MET`,          rest30Fail === 0],
-    ['28-day Block ≤100h (§117.23)',               r28ok ? `${fmtHrs(snap.rolling28)} — OK` : `${fmtHrs(snap.rolling28)} EXCEEDED`, r28ok],
-    ['365-day Block ≤1,000h (§117.23)',            r365ok ? `${fmtHrs(snap.rolling365)} — OK` : `${fmtHrs(snap.rolling365)} EXCEEDED`, r365ok],
-    ['7-day FDP ≤60h (§117.23)',                   f168ok ? `${fmtHrs(snap.fdpHours168)} — OK` : `${fmtHrs(snap.fdpHours168)} EXCEEDED`, f168ok],
-    ['28-day FDP ≤190h (§117.23)',                 f672ok ? `${fmtHrs(snap.fdpHours672)} — OK` : `${fmtHrs(snap.fdpHours672)} EXCEEDED`, f672ok],
+    ['FDP Limits (Table B/C §117.15/17)',                                      fdpFail === 0   ? 'PASS' : `${fdpFail} EXCEEDED`,           fdpFail === 0],
+    [`Pre-FDP Rest ≥${prov.minRestHours}h (§117.25)${provTag('minRestHours')}`,       restFail === 0  ? 'PASS' : `${restFail} DEFICIENT`,          restFail === 0],
+    [`${prov.minWeeklyRestHours}h Rest in 168h (§117.25)${provTag('minWeeklyRestHours')}`, rest30Fail === 0 ? 'PASS' : `${rest30Fail} NOT MET`,     rest30Fail === 0],
+    [`28-day Block ≤${prov.maxBlock28Hours}h (§117.23)${provTag('maxBlock28Hours')}`,  r28ok ? `${fmtHrs(snap.rolling28)} — OK` : `${fmtHrs(snap.rolling28)} EXCEEDED`, r28ok],
+    [`365-day Block ≤${prov.maxBlock365Hours.toLocaleString()}h (§117.23)${provTag('maxBlock365Hours')}`, r365ok ? `${fmtHrs(snap.rolling365)} — OK` : `${fmtHrs(snap.rolling365)} EXCEEDED`, r365ok],
+    [`7-day FDP ≤${prov.maxFdp168Hours}h (§117.23)${provTag('maxFdp168Hours')}`,       f168ok ? `${fmtHrs(snap.fdpHours168)} — OK` : `${fmtHrs(snap.fdpHours168)} EXCEEDED`, f168ok],
+    [`28-day FDP ≤${prov.maxFdp672Hours}h (§117.23)${provTag('maxFdp672Hours')}`,      f672ok ? `${fmtHrs(snap.fdpHours672)} — OK` : `${fmtHrs(snap.fdpHours672)} EXCEEDED`, f672ok],
   ].map(([req, result, ok]) => {
     const bg  = ok === null ? '#f8fafc' : ok ? '#f0fdf4' : '#fef2f2'
     const col = ok === null ? '#555'    : ok ? '#16a34a' : '#dc2626'
@@ -291,7 +295,7 @@ export function generateReport(entries: Entry[], periodDays: number | null): str
     : `<tr><td colspan="4" style="color:#16a34a;padding:10px">No violations in the selected period.</td></tr>`
 
   const logRows = filtered.map(e => {
-    const c    = compute(e, entries)
+    const c    = compute(e, entries, prov)
     const crew = e.augmented ? `${e.position} Aug-${e.crewCount}/${e.restFacility}` : e.position
     const fdpColor = c.fdpOk === false ? '#dc2626' : 'inherit'
     return `<tr>
@@ -305,7 +309,7 @@ export function generateReport(entries: Entry[], periodDays: number | null): str
       <td style="color:${fdpColor};font-weight:${c.fdpOk === false ? '700' : '400'}">${fmtHrs(c.fdpActual)} / ${c.fdpLimit}h${c.woclFlag ? ' ⚑' : ''}</td>
       <td style="color:${fdpColor}">${flag(c.fdpOk)}</td>
       <td>${fmtHrs(c.consRest)}</td>
-      <td style="color:${c.restOk === false ? '#dc2626' : 'inherit'}">${flag(c.restOk)}</td>
+      <td style="color:${c.restOk === false ? '#dc2626' : 'inherit'}" title="Required: ${prov.minRestHours}h">${flag(c.restOk)}</td>
       <td style="color:${c.weekly30Ok === false ? '#dc2626' : 'inherit'}">${flag(c.weekly30Ok)}</td>
       <td>${e.reason || '—'}</td>
     </tr>`
@@ -336,24 +340,32 @@ td { padding:7px 10px; border-bottom:1px solid #f1f5f9; vertical-align:middle; w
 <div class="meta">Period: <strong>${periodLabel}</strong> &nbsp;|&nbsp; Pilot(s): <strong>${pilots}</strong> &nbsp;|&nbsp; FDPs: <strong>${filtered.length}</strong> &nbsp;|&nbsp; Generated: ${generated}</div>
 <div class="status">${overallOk ? '✓' : '⚠'} Overall Status: ${statusText}${!overallOk && totalViolations > 0 ? ` — ${totalViolations} violation(s) in selected period` : ''}</div>
 <div style="margin-bottom:20px">
-  <div class="stat-box"><div class="val" style="color:${snap.hours28Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.rolling28)}</div><div class="lbl">28-day block / 100h</div></div>
-  <div class="stat-box"><div class="val" style="color:${snap.hours365Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.rolling365)}</div><div class="lbl">365-day block / 1,000h</div></div>
-  <div class="stat-box"><div class="val" style="color:${snap.fdp168Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.fdpHours168)}</div><div class="lbl">7-day FDP / 60h</div></div>
-  <div class="stat-box"><div class="val" style="color:${snap.fdp672Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.fdpHours672)}</div><div class="lbl">28-day FDP / 190h</div></div>
+  <div class="stat-box"><div class="val" style="color:${snap.hours28Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.rolling28)}</div><div class="lbl">28-day block / ${prov.maxBlock28Hours}h</div></div>
+  <div class="stat-box"><div class="val" style="color:${snap.hours365Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.rolling365)}</div><div class="lbl">365-day block / ${prov.maxBlock365Hours.toLocaleString()}h</div></div>
+  <div class="stat-box"><div class="val" style="color:${snap.fdp168Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.fdpHours168)}</div><div class="lbl">7-day FDP / ${prov.maxFdp168Hours}h</div></div>
+  <div class="stat-box"><div class="val" style="color:${snap.fdp672Ok===false?'#dc2626':'#2563eb'}">${fmtHrs(snap.fdpHours672)}</div><div class="lbl">28-day FDP / ${prov.maxFdp672Hours}h</div></div>
 </div>
 <h2>Scorecard</h2><table><thead><tr><th>Requirement</th><th>Result</th></tr></thead><tbody>${scRows}</tbody></table>
 <h2>Violations in Period</h2><table><thead><tr><th>FDP Start</th><th>Pilot</th><th>Type</th><th>Detail</th></tr></thead><tbody>${vRows}</tbody></table>
 <h2>FDP Log</h2>
 <table><thead><tr>
   <th>FDP Start</th><th>FDP End</th><th>Pilot</th><th>Crew</th><th>Route</th><th>Segs</th>
-  <th>Block</th><th>FDP / Limit</th><th>FDP✓</th><th>Rest After</th><th>10h✓</th><th>30h✓</th><th>Notes</th>
+  <th>Block</th><th>FDP / Limit</th><th>FDP✓</th><th>Rest After</th><th>${prov.minRestHours}h✓</th><th>${prov.minWeeklyRestHours}h✓</th><th>Notes</th>
 </tr></thead><tbody>${logRows}</tbody></table>
 <div class="note">⑦ = WOCL overlap — Table B limit reduced 30 min. &nbsp;Rolling-window totals computed as of the most recent FDP in the full dataset (not limited to the selected period).<br>
+${Object.keys(DEFAULT_PROVISIONS).some(k => prov[k as keyof ContractProvisions] !== DEFAULT_PROVISIONS[k as keyof ContractProvisions]) ? '<strong style="color:#7c3aed">Contract provisions active:</strong> ' + [
+  prov.minRestHours !== DEFAULT_PROVISIONS.minRestHours ? `rest min ${prov.minRestHours}h` : '',
+  prov.minWeeklyRestHours !== DEFAULT_PROVISIONS.minWeeklyRestHours ? `weekly rest min ${prov.minWeeklyRestHours}h` : '',
+  prov.maxBlock28Hours !== DEFAULT_PROVISIONS.maxBlock28Hours ? `28-day block max ${prov.maxBlock28Hours}h` : '',
+  prov.maxBlock365Hours !== DEFAULT_PROVISIONS.maxBlock365Hours ? `365-day block max ${prov.maxBlock365Hours}h` : '',
+  prov.maxFdp168Hours !== DEFAULT_PROVISIONS.maxFdp168Hours ? `7-day FDP max ${prov.maxFdp168Hours}h` : '',
+  prov.maxFdp672Hours !== DEFAULT_PROVISIONS.maxFdp672Hours ? `28-day FDP max ${prov.maxFdp672Hours}h` : '',
+].filter(Boolean).join(', ') + '.<br>' : ''}
 This report is for reference and record-keeping only. Always verify compliance with your OpSpec, POI, and company manual. Generated by FAR 117 / 121 Duty &amp; Flight Time Tracker.</div>
 </body></html>`
 }
 
-export function exportCSV(entries: Entry[]): void {
+export function exportCSV(entries: Entry[], prov: ContractProvisions = DEFAULT_PROVISIONS): void {
   if (!entries.length) { alert('No data to export.'); return }
 
   const hdr = [
@@ -367,7 +379,7 @@ export function exportCSV(entries: Entry[]): void {
   const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
 
   const rows = entries.map(e => {
-    const c = compute(e, entries)
+    const c = compute(e, entries, prov)
     return [
       q(e.fdpStart), q(e.fdpEnd), q(e.pilot), q(e.position),
       q(e.augmented ? 'Yes' : 'No'), q(e.crewCount), q(e.restFacility),

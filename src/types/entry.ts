@@ -2,6 +2,24 @@ export type Position = 'CA' | 'FO'
 export type RestFacility = 'C1' | 'C2' | 'C3'
 export type ReserveType = 'none' | 'airport' | 'short-call'
 
+export interface ContractProvisions {
+  minRestHours: number       // §117.25 pre-FDP rest minimum (FAR default: 10)
+  minWeeklyRestHours: number // §117.25 consecutive hours free in 168h (FAR default: 30)
+  maxBlock28Hours: number    // §117.23 28-day block limit (FAR default: 100)
+  maxBlock365Hours: number   // §117.23 365-day block limit (FAR default: 1000)
+  maxFdp168Hours: number     // §117.23 7-day FDP limit (FAR default: 60)
+  maxFdp672Hours: number     // §117.23 28-day FDP limit (FAR default: 190)
+}
+
+export const DEFAULT_PROVISIONS: ContractProvisions = {
+  minRestHours: 10,
+  minWeeklyRestHours: 30,
+  maxBlock28Hours: 100,
+  maxBlock365Hours: 1000,
+  maxFdp168Hours: 60,
+  maxFdp672Hours: 190,
+}
+
 export interface Entry {
   id: string
   pilot: string

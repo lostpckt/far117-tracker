@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { uid, parseDTPair, ms, exportCSV, generateReport } from '@/lib/calculations'
-import type { Entry, Position, RestFacility, ReserveType } from '@/types/entry'
+import type { Entry, Position, RestFacility, ReserveType, ContractProvisions } from '@/types/entry'
 
 interface Props {
   entries: Entry[]
   onAdd: (updated: Entry[]) => void
+  provisions: ContractProvisions
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -40,7 +41,7 @@ function DTField({
   )
 }
 
-export default function AddEntryForm({ entries, onAdd }: Props) {
+export default function AddEntryForm({ entries, onAdd, provisions }: Props) {
   const [pilot,       setPilot]       = useState('')
   const [position,    setPosition]    = useState<Position>('CA')
   const [augmented,   setAugmented]   = useState(false)
@@ -286,7 +287,7 @@ export default function AddEntryForm({ entries, onAdd }: Props) {
             Add FDP Entry
           </Button>
 
-          <Button variant="outline" onClick={() => exportCSV(entries)} className="text-green-700 border-green-200 bg-green-50 hover:bg-green-600 hover:text-white text-sm h-8">
+          <Button variant="outline" onClick={() => exportCSV(entries, provisions)} className="text-green-700 border-green-200 bg-green-50 hover:bg-green-600 hover:text-white text-sm h-8">
             Export CSV
           </Button>
 
@@ -306,7 +307,7 @@ export default function AddEntryForm({ entries, onAdd }: Props) {
               variant="outline"
               onClick={() => {
                 const days = parseInt(rptPeriod, 10) || null
-                const html = generateReport(entries, days === 0 ? null : days)
+                const html = generateReport(entries, days === 0 ? null : days, provisions)
                 if (!html) { alert('No entries found for the selected period.'); return }
                 const w = window.open('', '_blank')
                 w?.document.write(html)
