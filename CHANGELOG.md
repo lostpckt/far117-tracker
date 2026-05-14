@@ -2,6 +2,13 @@
 
 All notable changes to the FAR 117 / 121 Duty & Flight Time Tracker will be documented here.
 
+## [1.2.0] — 2026-05-14
+
+### Added
+- Form draft autosave: all Log FDP fields are continuously saved to localStorage as you type; the form is fully restored if the app is closed, refreshed, or the phone sleeps mid-entry. A "Clear form" link discards the draft without submitting.
+- What's new: button in the header opens an in-app changelog modal so users can see what has changed without leaving the app
+- Check for update: button in the header manually triggers a service worker refresh
+
 ## [1.1.0] — 2026-05-08
 
 ### Contract Provisions
