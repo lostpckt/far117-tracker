@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +7,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { uid, parseDTPair, ms, exportCSV, generateReport } from '@/lib/calculations'
 import type { Entry, Position, RestFacility, ReserveType, ContractProvisions } from '@/types/entry'
+
+const DRAFT_KEY = 'far117_v1_form_draft'
+
+interface DraftState {
+  pilot: string; position: Position; augmented: boolean
+  crewCount: 3 | 4; restFac: RestFacility
+  fdpSDate: string; fdpSTime: string; fdpEDate: string; fdpETime: string
+  dep: string; arr: string; segments: string; blockTime: string
+  acclimated: boolean; reserveType: ReserveType
+  rsDate: string; rsTime: string; reDate: string; reTime: string
+  reason: string
+}
+
+function readDraft(): DraftState | null {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') } catch { return null }
+}
 
 interface Props {
   entries: Entry[]
@@ -42,36 +58,55 @@ function DTField({
 }
 
 export default function AddEntryForm({ entries, onAdd, provisions }: Props) {
-  const [pilot,       setPilot]       = useState('')
-  const [position,    setPosition]    = useState<Position>('CA')
-  const [augmented,   setAugmented]   = useState(false)
-  const [crewCount,   setCrewCount]   = useState<3 | 4>(3)
-  const [restFac,     setRestFac]     = useState<RestFacility>('C1')
-  const [fdpSDate,    setFdpSDate]    = useState('')
-  const [fdpSTime,    setFdpSTime]    = useState('')
-  const [fdpEDate,    setFdpEDate]    = useState('')
-  const [fdpETime,    setFdpETime]    = useState('')
-  const [dep,         setDep]         = useState('')
-  const [arr,         setArr]         = useState('')
-  const [segments,    setSegments]    = useState('1')
-  const [blockTime,   setBlockTime]   = useState('')
-  const [acclimated,  setAcclimated]  = useState(true)
-  const [reserveType, setReserveType] = useState<ReserveType>('none')
-  const [rsDate,      setRsDate]      = useState('')
-  const [rsTime,      setRsTime]      = useState('')
-  const [reDate,      setReDate]      = useState('')
-  const [reTime,      setReTime]      = useState('')
-  const [reason,      setReason]      = useState('')
+  const d = readDraft()
+
+  const [pilot,       setPilot]       = useState(d?.pilot       ?? '')
+  const [position,    setPosition]    = useState<Position>(d?.position ?? 'CA')
+  const [augmented,   setAugmented]   = useState(d?.augmented   ?? false)
+  const [crewCount,   setCrewCount]   = useState<3 | 4>(d?.crewCount ?? 3)
+  const [restFac,     setRestFac]     = useState<RestFacility>(d?.restFac ?? 'C1')
+  const [fdpSDate,    setFdpSDate]    = useState(d?.fdpSDate    ?? '')
+  const [fdpSTime,    setFdpSTime]    = useState(d?.fdpSTime    ?? '')
+  const [fdpEDate,    setFdpEDate]    = useState(d?.fdpEDate    ?? '')
+  const [fdpETime,    setFdpETime]    = useState(d?.fdpETime    ?? '')
+  const [dep,         setDep]         = useState(d?.dep         ?? '')
+  const [arr,         setArr]         = useState(d?.arr         ?? '')
+  const [segments,    setSegments]    = useState(d?.segments    ?? '1')
+  const [blockTime,   setBlockTime]   = useState(d?.blockTime   ?? '')
+  const [acclimated,  setAcclimated]  = useState(d?.acclimated  ?? true)
+  const [reserveType, setReserveType] = useState<ReserveType>(d?.reserveType ?? 'none')
+  const [rsDate,      setRsDate]      = useState(d?.rsDate      ?? '')
+  const [rsTime,      setRsTime]      = useState(d?.rsTime      ?? '')
+  const [reDate,      setReDate]      = useState(d?.reDate      ?? '')
+  const [reTime,      setReTime]      = useState(d?.reTime      ?? '')
+  const [reason,      setReason]      = useState(d?.reason      ?? '')
   const [err,         setErr]         = useState('')
   const [rptPeriod,   setRptPeriod]   = useState('28')
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        pilot, position, augmented, crewCount, restFac,
+        fdpSDate, fdpSTime, fdpEDate, fdpETime,
+        dep, arr, segments, blockTime,
+        acclimated, reserveType,
+        rsDate, rsTime, reDate, reTime, reason,
+      }))
+    } catch {}
+  }, [pilot, position, augmented, crewCount, restFac,
+      fdpSDate, fdpSTime, fdpEDate, fdpETime,
+      dep, arr, segments, blockTime,
+      acclimated, reserveType,
+      rsDate, rsTime, reDate, reTime, reason])
+
   function resetForm() {
+    setPilot(''); setPosition('CA'); setAugmented(false); setCrewCount(3); setRestFac('C1')
     setFdpSDate(''); setFdpSTime(''); setFdpEDate(''); setFdpETime('')
     setDep(''); setArr(''); setSegments('1'); setBlockTime('')
-    setAugmented(false); setCrewCount(3); setRestFac('C1')
     setAcclimated(true); setReserveType('none')
     setRsDate(''); setRsTime(''); setReDate(''); setReTime('')
     setReason(''); setErr('')
+    try { localStorage.removeItem(DRAFT_KEY) } catch {}
   }
 
   function handleAdd() {
@@ -282,7 +317,18 @@ export default function AddEntryForm({ entries, onAdd, provisions }: Props) {
 
         {err && <p className="text-red-600 text-xs mt-3">{err}</p>}
 
-        <div className="flex flex-wrap gap-2.5 mt-4 items-center">
+        <div className="flex items-center justify-between mt-3">
+          <span className="text-[0.68rem] text-slate-400">Draft autosaved</span>
+          <button
+            type="button"
+            onClick={resetForm}
+            className="text-[0.68rem] text-slate-400 hover:text-red-500 underline"
+          >
+            Clear form
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2.5 mt-2 items-center">
           <Button onClick={handleAdd} className="bg-slate-900 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm h-8">
             Add FDP Entry
           </Button>
