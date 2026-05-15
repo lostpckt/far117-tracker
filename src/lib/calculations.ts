@@ -336,6 +336,7 @@ td { padding:7px 10px; border-bottom:1px solid #f1f5f9; vertical-align:middle; w
 @media print { .no-print { display:none; } body { padding:16px; } }
 </style></head><body>
 <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+<button class="print-btn no-print" onclick="window.close()" style="background:#6b7280;margin-left:8px">✕ Close</button>
 <h1>FAR 117 / 121 Compliance Report</h1>
 <div class="meta">Period: <strong>${periodLabel}</strong> &nbsp;|&nbsp; Pilot(s): <strong>${pilots}</strong> &nbsp;|&nbsp; FDPs: <strong>${filtered.length}</strong> &nbsp;|&nbsp; Generated: ${generated}</div>
 <div class="status">${overallOk ? '✓' : '⚠'} Overall Status: ${statusText}${!overallOk && totalViolations > 0 ? ` — ${totalViolations} violation(s) in selected period` : ''}</div>

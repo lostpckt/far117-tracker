@@ -2,6 +2,11 @@
 
 All notable changes to the FAR 117 / 121 Duty & Flight Time Tracker will be documented here.
 
+## [1.2.1] — 2026-05-15
+
+### Fixed
+- Compliance report page had no way to return to the app — added a Close button alongside the Print button
+
 ## [1.2.0] — 2026-05-14
 
 ### Added
