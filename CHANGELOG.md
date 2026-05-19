@@ -5,6 +5,7 @@ All notable changes to the FAR 117 / 121 Duty & Flight Time Tracker will be docu
 ## [1.2.2] — 2026-05-19
 
 ### Added
+- **Collapsible quick reference** — the §117 Quick Reference card at the bottom of the page can now be expanded/collapsed by tapping the header; defaults to collapsed and remembers the preference across sessions
 - **Install banner** — users viewing the app in a browser (mobile or desktop) see a one-time dismissible prompt with platform-specific instructions for adding the app to their home screen; hidden automatically when already running as an installed PWA
 
 ### Changed
