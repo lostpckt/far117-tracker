@@ -22,16 +22,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-function DTField({ label, date, time, onDate, onTime, placeholder = '00:00' }: {
+function DTField({ label, date, time, onDate, onTime }: {
   label: string; date: string; time: string
-  onDate: (v: string) => void; onTime: (v: string) => void; placeholder?: string
+  onDate: (v: string) => void; onTime: (v: string) => void
 }) {
   return (
     <div className="flex flex-col gap-1">
       <Label className="text-xs font-semibold text-slate-500">{label}</Label>
       <div className="flex gap-1.5">
         <Input type="date" value={date} onChange={e => onDate(e.target.value)} className="text-sm h-8 flex-[1.5] appearance-none" />
-        <Input value={time} onChange={e => onTime(e.target.value)} placeholder={placeholder} maxLength={5} className="text-sm h-8 flex-1 min-w-0" />
+        <Input type="time" value={time} onChange={e => onTime(e.target.value)} className="text-sm h-8 flex-1 min-w-0 appearance-none" />
       </div>
     </div>
   )
@@ -176,8 +176,8 @@ export default function EditModal({ entry, onSave, onClose }: Props) {
           )}
 
           <SectionLabel>FDP Times (local)</SectionLabel>
-          <DTField label="FDP Start (Report / On-Duty)" date={fdpSDate} time={fdpSTime} onDate={setFdpSDate} onTime={setFdpSTime} placeholder="08:00" />
-          <DTField label="FDP End (Off-Duty)"            date={fdpEDate} time={fdpETime} onDate={setFdpEDate} onTime={setFdpETime} placeholder="18:30" />
+          <DTField label="FDP Start (Report / On-Duty)" date={fdpSDate} time={fdpSTime} onDate={setFdpSDate} onTime={setFdpSTime} />
+          <DTField label="FDP End (Off-Duty)"            date={fdpEDate} time={fdpETime} onDate={setFdpEDate} onTime={setFdpETime} />
 
           <SectionLabel>Flight Details</SectionLabel>
           <div className="flex flex-col gap-1">
@@ -217,8 +217,8 @@ export default function EditModal({ entry, onSave, onClose }: Props) {
           </div>
 
           <SectionLabel>Rest Period After This FDP</SectionLabel>
-          <DTField label="Rest Start"             date={rsDate} time={rsTime} onDate={setRsDate} onTime={setRsTime} placeholder="19:00" />
-          <DTField label="Rest End (Next Report)" date={reDate} time={reTime} onDate={setReDate} onTime={setReTime} placeholder="06:00" />
+          <DTField label="Rest Start"             date={rsDate} time={rsTime} onDate={setRsDate} onTime={setRsTime} />
+          <DTField label="Rest End (Next Report)" date={reDate} time={reTime} onDate={setReDate} onTime={setReTime} />
 
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold text-slate-500">Exceedance / Notes</Label>

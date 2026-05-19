@@ -11,6 +11,7 @@ import EditModal from '@/components/EditModal'
 import QuickReference from '@/components/QuickReference'
 import ContractProvisionsCard from '@/components/ContractProvisions'
 import UpdateBanner from '@/components/UpdateBanner'
+import InstallBanner from '@/components/InstallBanner'
 
 export default function App() {
   const [entries, setEntries] = useState<Entry[]>(loadEntries)
@@ -40,6 +41,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-100 dark:bg-slate-950">
       <Header dark={dark} onToggleDark={() => setDark(d => !d)} />
       <div className="max-w-screen-2xl mx-auto p-5 space-y-5">
+        <InstallBanner />
         <RegNote />
         <Dashboard entries={entries} provisions={provisions} />
         <AddEntryForm entries={entries} onAdd={updateEntries} provisions={provisions} />

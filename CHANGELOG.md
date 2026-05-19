@@ -2,6 +2,15 @@
 
 All notable changes to the FAR 117 / 121 Duty & Flight Time Tracker will be documented here.
 
+## [1.2.2] — 2026-05-19
+
+### Added
+- **Install banner** — users viewing the app in a browser (mobile or desktop) see a one-time dismissible prompt with platform-specific instructions for adding the app to their home screen; hidden automatically when already running as an installed PWA
+
+### Changed
+- **FDP Start date defaults to today** — the date field now pre-fills with today's local date instead of being blank
+- **Native time picker on all time fields** — FDP Start, FDP End, Rest Start, and Rest End now use `type="time"` in both the Log FDP form and Edit modal, bringing up the OS scroll-wheel/clock picker on mobile instead of the keyboard; also fixes the height mismatch between date and time fields
+
 ## [1.2.1] — 2026-05-15
 
 ### Fixed
