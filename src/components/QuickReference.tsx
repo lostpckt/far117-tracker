@@ -31,10 +31,6 @@ const sections = [
     title: '§117.23 Cumulative FDP Limits',
     body: '60 FDP hours in any 168 consecutive hours (7 days). 190 FDP hours in any 672 consecutive hours (28 days). FDP hours are the total on-duty time from report to off-duty, not just block time. Both are tracked as rolling windows.',
   },
-  {
-    title: 'How to Use This Tool',
-    body: 'Log one entry per FDP. Enter the report time as FDP Start and off-duty release as FDP End. Block time is total airborne hours for the FDP (decimal, e.g. 4.5 = 4h 30m). Rest Start/End are optional but required for rest compliance tracking. All times are local.',
-  },
 ]
 
 export default function QuickReference() {

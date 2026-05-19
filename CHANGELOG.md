@@ -5,7 +5,13 @@ All notable changes to the FAR 117 / 121 Duty & Flight Time Tracker will be docu
 ## [1.2.2] — 2026-05-19
 
 ### Added
+- **"How to Use This Tool" card** — moved from inside the quick reference to a standalone collapsible card near the top of the page (below the regulatory note); defaults to collapsed
 - **Collapsible quick reference** — the §117 Quick Reference card at the bottom of the page can now be expanded/collapsed by tapping the header; defaults to collapsed and remembers the preference across sessions
+
+### Changed
+- **Header overflow menu on mobile** — "What's new" and "Check for update" collapse into a ⋮ dropdown on screens narrower than 1024px; full buttons remain on desktop
+- **Header title wrapping fix** — title is now `whitespace-nowrap` and the check button has a fixed width to prevent layout shifts
+- **Buy me a Coffee link** — added to the header menu (mobile dropdown and desktop inline)
 - **Install banner** — users viewing the app in a browser (mobile or desktop) see a one-time dismissible prompt with platform-specific instructions for adding the app to their home screen; hidden automatically when already running as an installed PWA
 
 ### Changed
